@@ -215,49 +215,7 @@ class _ModificationCoursPageState extends State<ModificationCoursPage> {
     _prixController.dispose();
     super.dispose();
   }
-  Future<void> updatePurchases() async {
-    try {
-      final purchasesQuery = await FirebaseFirestore.instance
-          .collection('purchases')  // <-- ici en minuscules
-          .where('courseIdOriginal', isEqualTo: widget.cours.id)
-          .get();
 
-      print('Nombre de documents purchases trouvés : ${purchasesQuery.docs.length}');
-
-      if (purchasesQuery.docs.isEmpty) return;
-      final purchasesDocs = await FirebaseFirestore.instance
-          .collection('purchases')
-          .where('courseIdOriginal', isEqualTo: widget.cours.id)
-          .get();
-
-      print('Nombre de documents dans purchases avec courseIdOriginal=${widget.cours.id} : ${purchasesQuery.docs.length}');
-
-      if (purchasesDocs.docs.isEmpty) {
-        print("Aucun document trouvé !");
-        return;
-      }
-
-      for (final doc in purchasesQuery.docs) {
-        Map<String, dynamic> updateData = {
-          'title': _titreController.text,
-          'description': _descriptionController.text,
-          'price': double.tryParse(_prixController.text) ?? 0,
-          'videos': videos,
-          'pdfs': pdfs,
-          'notes': notes,
-        };
-
-        try {
-          await doc.reference.update(updateData);
-          print('Document ${doc.id} mis à jour dans purchases.');
-        } catch (e) {
-          print('Erreur lors mise à jour doc ${doc.id} : $e');
-        }
-      }
-    } catch (e) {
-      print('Erreur lors récupération documents purchases : $e');
-    }
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -374,10 +332,8 @@ class _ModificationCoursPageState extends State<ModificationCoursPage> {
                       'notes': notes,
                     });
 
-                    await updatePurchases();
-
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cours mis à jour avec succès dans courses et purchases')),
+                      const SnackBar(content: Text('Cours mis à jour avec succès')),
                     );
                     Navigator.pop(context);
                   }
