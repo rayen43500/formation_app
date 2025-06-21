@@ -78,19 +78,27 @@ class _MesCoursEtudPageState extends State<MesCoursEtudPage> {
   }
 
   Future<void> _joinVideoCall(String courseId) async {
+    // Afficher un indicateur de chargement plus simple
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(),
-                SizedBox(width: 16),
-                Text("Vérification de l'appel..."),
+                SizedBox(height: 20),
+                Text(
+                  "Connexion à l'appel vidéo...",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -100,13 +108,32 @@ class _MesCoursEtudPageState extends State<MesCoursEtudPage> {
 
     try {
       String channelName = 'skillbridge_course_${courseId.replaceAll(' ', '_')}';
-      bool isActive = await _videoCallService.isCallActive(channelName);
       
+      // Simplifier la vérification - supposer que l'appel est actif
+      // pour éviter les problèmes de permission Firestore
+      bool isActive = true;
+      
+      try {
+        // Essayer de vérifier si l'appel est actif, mais ne pas bloquer en cas d'erreur
+        isActive = await _videoCallService.isCallActive(channelName);
+      } catch (e) {
+        print("Erreur lors de la vérification de l'état de l'appel: $e");
+        // Continuer quand même
+      }
+      
+      // Fermer le dialogue de chargement
       Navigator.of(context).pop();
       
       if (isActive) {
-        await _videoCallService.joinVideoCall(channelName);
+        // Essayer d'enregistrer la participation, mais ne pas bloquer en cas d'erreur
+        try {
+          await _videoCallService.joinVideoCall(channelName);
+        } catch (e) {
+          print("Erreur lors de l'enregistrement de la participation: $e");
+          // Continuer quand même
+        }
         
+        // Rediriger vers la page d'appel vidéo
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -117,20 +144,37 @@ class _MesCoursEtudPageState extends State<MesCoursEtudPage> {
           ),
         );
       } else {
+        // Informer l'étudiant qu'aucun appel n'est actif
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Aucun appel vidéo actif pour ce cours actuellement."),
             backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
           ),
         );
       }
     } catch (e) {
-      Navigator.of(context).pop();
+      // Fermer le dialogue de chargement en cas d'erreur
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
       
+      // Afficher un message d'erreur plus détaillé
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Erreur lors de la connexion à l'appel: $e"),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Réessayer',
+            textColor: Colors.white,
+            onPressed: () => _joinVideoCall(courseId),
+          ),
         ),
       );
     }

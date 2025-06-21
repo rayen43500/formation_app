@@ -25,7 +25,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   String? _errorMessage;
   Timer? _connectionTimeoutTimer;
   int _connectionAttempts = 0;
-  static const int _maxConnectionAttempts = 2;
+  static const int _maxConnectionAttempts = 3;  // Augmenté à 3 tentatives
   bool _conferenceStarted = false;
   bool _useWebFallback = false;
 
@@ -183,6 +183,13 @@ class _VideoCallPageState extends State<VideoCallPage> {
             _useWebFallback = true;
           });
           _openJitsiInBrowser();
+        } else if (kIsWeb) {
+          // Sur le web, en cas d'erreur, proposer la solution de secours
+          setState(() {
+            _errorMessage = "Problème de connexion à l'appel vidéo. Essayez d'ouvrir directement dans le navigateur.";
+            _isJoining = false;
+            _useWebFallback = true;
+          });
         } else {
           rethrow;
         }
@@ -200,7 +207,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
 
   void _startConnectionTimeoutTimer() {
     _connectionTimeoutTimer?.cancel();
-    _connectionTimeoutTimer = Timer(const Duration(seconds: 20), () {
+    _connectionTimeoutTimer = Timer(const Duration(seconds: 15), () {
       if (mounted && _isJoining && !_conferenceStarted) {
         if (_connectionAttempts < _maxConnectionAttempts) {
           _connectionAttempts++;
@@ -210,6 +217,10 @@ class _VideoCallPageState extends State<VideoCallPage> {
           setState(() {
             _errorMessage = "La connexion à l'appel vidéo a échoué après plusieurs tentatives. Veuillez vérifier votre connexion internet et réessayer.";
             _isJoining = false;
+            // Sur le web, suggérer la solution de secours
+            if (kIsWeb) {
+              _useWebFallback = true;
+            }
           });
         }
       }
@@ -369,13 +380,16 @@ class _VideoCallPageState extends State<VideoCallPage> {
             children: [
               Icon(Icons.error_outline, color: Colors.red, size: 48),
               SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                style: TextStyle(fontSize: 16),
-                textAlign: TextAlign.center,
-                maxLines: 4,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  _errorMessage!,
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                  maxLines: 4,
+                ),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
