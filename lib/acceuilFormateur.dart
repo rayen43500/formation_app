@@ -6,7 +6,8 @@ import 'profilFormateurform.dart';
 import 'package:ly_na/ModificationCour.dart';
 import 'ajoutQuiz.dart';
 import 'statiCoursAdmin.dart';
-import'VideoCallPage.dart';
+import 'VideoCallPage.dart';
+import 'video_call_service.dart';
 
 class AccueilFormateur extends StatefulWidget {
   @override
@@ -24,6 +25,76 @@ class _AccueilFormateurState extends State<AccueilFormateur> {
   FirebaseFirestore.instance.collection('courses');
   final String formateurId = FirebaseAuth.instance.currentUser?.uid ?? '';
   String searchText = '';
+  
+  // Service d'appel vidéo
+  final VideoCallService _videoCallService = VideoCallService();
+
+  // Afficher le dialogue de confirmation pour démarrer un appel
+  Future<void> _showStartCallDialog(BuildContext context, DocumentSnapshot cours) async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Démarrer un appel vidéo'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Vous allez démarrer un appel vidéo pour le cours:'),
+              SizedBox(height: 8),
+              Text(
+                cours['title'],
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              Text('Les étudiants inscrits à ce cours pourront rejoindre la session.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                
+                // Créer directement le channel name sans passer par le service pour le moment
+                String channelName = 'skillbridge_course_${cours.id.replaceAll(' ', '_')}';
+                
+                // Lancer l'appel immédiatement
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VideoCallPage(
+                      channelName: channelName,
+                      isTrainer: true,
+                    ),
+                  ),
+                );
+                
+                // Enregistrer l'appel dans la base de données en arrière-plan
+                try {
+                  await _videoCallService.createVideoCall(
+                    cours.id,
+                    cours['title'],
+                  );
+                } catch (e) {
+                  print("Erreur lors de l'enregistrement de l'appel: $e");
+                  // Ne pas bloquer l'interface utilisateur avec cette erreur
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Démarrer l\'appel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -278,18 +349,8 @@ class _AccueilFormateurState extends State<AccueilFormateur> {
                       child: IconButton(
                         icon: Icon(Icons.video_call, color: Colors.blueGrey, size: 30), // Icône plus grande
                         onPressed: () {
-                          // L'ID du canal doit être unique pour chaque cours
-                          // Utilisez un préfixe pour s'assurer que c'est un nom valide pour Agora
-                          String channelName = 'skillbridge_course_${cours.id.replaceAll(' ', '_')}'; // Remplacez les espaces
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VideoCallPage(
-                                channelName: channelName,
-                                isTrainer: true, // C'est un formateur qui démarre l'appel
-                              ),
-                            ),
-                          );
+                          // Afficher le dialogue de confirmation pour démarrer l'appel
+                          _showStartCallDialog(context, cours);
                         },
                       ),
                     ),

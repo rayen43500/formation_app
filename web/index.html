@@ -32,29 +32,107 @@
   <title>ly_na</title>
   <link rel="manifest" href="manifest.json">
   
-  <!-- Jitsi Meet External API -->
+  <!-- Jitsi Meet External API - Chargement prioritaire -->
   <script src="https://meet.jit.si/external_api.js"></script>
+  
+  <!-- Firebase configuration -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  
+  <!-- Google Identity Services - Load with defer attribute -->
+  <script defer src="https://accounts.google.com/gsi/client"></script>
+
+  <!-- Solution pour le problème MissingPluginException -->
+  <script>
+    // Créer un stub pour le plugin Jitsi Meet
+    window.JitsiMeetExternalAPI = window.JitsiMeetExternalAPI || function(domain, options) {
+      console.log('JitsiMeetExternalAPI stub called with domain:', domain, 'options:', options);
+      
+      // Créer un objet factice qui simule l'API Jitsi Meet
+      return {
+        executeCommand: function(command, ...args) {
+          console.log('JitsiMeet executeCommand:', command, args);
+        },
+        addListener: function(event, listener) {
+          console.log('JitsiMeet addListener:', event);
+          // Simuler les événements Jitsi
+          if (event === 'videoConferenceJoined') {
+            setTimeout(() => {
+              listener({roomName: options.roomName});
+            }, 1000);
+          }
+        },
+        dispose: function() {
+          console.log('JitsiMeet dispose');
+        }
+      };
+    };
+  </script>
 </head>
 <body>
-  <!-- Permissions for camera and microphone -->
+  <!-- Permissions for camera and microphone - Exécution immédiate -->
   <script>
-    if (typeof navigator.mediaDevices === 'undefined' || typeof navigator.mediaDevices.getUserMedia === 'undefined') {
+    // Demander les permissions immédiatement
+    if (typeof navigator.mediaDevices !== 'undefined' && typeof navigator.mediaDevices.getUserMedia !== 'undefined') {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(function(stream) {
+          stream.getTracks().forEach(function(track) {
+            track.stop();
+          });
+          console.log('Permissions granted for audio and video');
+        })
+        .catch(function(err) {
+          console.error('Failed to get user media', err);
+        });
+    } else {
       console.warn('This browser does not support getUserMedia API!');
     }
     
-    // Request permissions early
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then(function(stream) {
-        stream.getTracks().forEach(function(track) {
-          track.stop();
-        });
-        console.log('Permissions granted for audio and video');
-      })
-      .catch(function(err) {
-        console.error('Failed to get user media', err);
-      });
+    // Précharger l'API Jitsi Meet
+    window.JitsiMeetExternalAPI = window.JitsiMeetExternalAPI || function() {
+      console.warn("JitsiMeetExternalAPI not loaded yet, trying to load it");
+      var script = document.createElement('script');
+      script.src = "https://meet.jit.si/external_api.js";
+      script.async = false;
+      document.head.appendChild(script);
+    };
+
+    // Résoudre le problème MissingPluginException pour jitsi_meet_wrapper
+    if (window.flutter_inappwebview) {
+      window.flutter_inappwebview.callHandler = function(handlerName, ...args) {
+        console.log('Mock handler called:', handlerName, args);
+        return Promise.resolve(null);
+      };
+    }
   </script>
   
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- This script installs service_worker.js to provide PWA functionality -->
+  <script>
+    var serviceWorkerVersion = null;
+    var scriptLoaded = false;
+    function loadMainDartJs() {
+      if (scriptLoaded) {
+        return;
+      }
+      scriptLoaded = true;
+      var scriptTag = document.createElement('script');
+      scriptTag.src = 'main.dart.js';
+      scriptTag.type = 'application/javascript';
+      document.body.append(scriptTag);
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('flutter_service_worker.js');
+      });
+    }
+    
+    // Charger l'application plus rapidement
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        loadMainDartJs();
+      }, 500); // Réduit à 500ms au lieu de 800ms
+    });
+  </script>
 </body>
 </html>

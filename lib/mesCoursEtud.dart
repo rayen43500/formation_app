@@ -7,6 +7,7 @@ import 'quizPage.dart';
 import 'comptformateur.dart';
 import 'DétailCoursEtudiant.dart';
 import 'VideoCallPage.dart';
+import 'video_call_service.dart';
 
 class MesCoursEtudPage extends StatefulWidget {
   @override
@@ -18,6 +19,7 @@ class _MesCoursEtudPageState extends State<MesCoursEtudPage> {
   String searchText = '';
   int _selectedIndex = 1;
   List<QueryDocumentSnapshot> categoriesList = [];
+  final VideoCallService _videoCallService = VideoCallService();
 
   final Color backgroundColor = Color(0xFF9FB0CC);
 
@@ -68,6 +70,70 @@ class _MesCoursEtudPageState extends State<MesCoursEtudPage> {
         );
       }),
     );
+  }
+
+  Future<bool> _isCallActive(String courseId) async {
+    String channelName = 'skillbridge_course_${courseId.replaceAll(' ', '_')}';
+    return await _videoCallService.isCallActive(channelName);
+  }
+
+  Future<void> _joinVideoCall(String courseId) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text("Vérification de l'appel..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      String channelName = 'skillbridge_course_${courseId.replaceAll(' ', '_')}';
+      bool isActive = await _videoCallService.isCallActive(channelName);
+      
+      Navigator.of(context).pop();
+      
+      if (isActive) {
+        await _videoCallService.joinVideoCall(channelName);
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoCallPage(
+              channelName: channelName,
+              isTrainer: false,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Aucun appel vidéo actif pour ce cours actuellement."),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Erreur lors de la connexion à l'appel: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -271,17 +337,8 @@ class _MesCoursEtudPageState extends State<MesCoursEtudPage> {
                                         ),
                                       ), ElevatedButton.icon(
                                         onPressed: () {
-                                          String channelName = 'skillbridge_course_${courseIdOriginal.replaceAll(' ', '_')}'; // Utilisez le même ID et format que pour le formateur
                                           if (courseIdOriginal.isNotEmpty) {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => VideoCallPage(
-                                                  channelName: channelName,
-                                                  isTrainer: false, // C'est un étudiant qui rejoint
-                                                ),
-                                              ),
-                                            );
+                                            _joinVideoCall(courseIdOriginal);
                                           } else {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               SnackBar(content: Text("ID du cours original manquant pour l'appel vidéo.")),
