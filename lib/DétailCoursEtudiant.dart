@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart' as launcher;
@@ -9,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:open_file/open_file.dart';
+import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 
 class DetailCoursEtudiant extends StatefulWidget {
   final String courseId;
@@ -25,16 +28,14 @@ class _DetailCoursPageState extends State<DetailCoursEtudiant> {
 
   Future<void> _downloadFile(String url, String fileName) async {
     try {
-      // Demander les permissions
-      if (Platform.isAndroid) {
-        final status = await Permission.storage.request();
-        if (!status.isGranted) {
-          throw Exception("Permission de stockage refusée");
-        }
+      if (kIsWeb) {
+        // Méthode pour le web
+        _downloadForWeb(url, fileName);
+        return;
       }
 
-      // Afficher un indicateur de progression
-      final progressDialog = showDialog(
+      // Afficher un indicateur de progression pour les plateformes mobiles
+      showDialog(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
@@ -51,32 +52,16 @@ class _DetailCoursPageState extends State<DetailCoursEtudiant> {
         },
       );
 
-      // Obtenir le répertoire de téléchargement
-      Directory? directory;
-      if (Platform.isAndroid) {
-        directory = await getExternalStorageDirectory();
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
+      // Méthode 1: Télécharger dans un fichier temporaire
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = '${tempDir.path}/$fileName';
+      final tempFile = File(tempPath);
       
-      if (directory == null) {
-        throw Exception("Impossible d'accéder au répertoire de stockage");
-      }
-
-      // Créer un dossier "Downloads" s'il n'existe pas
-      final downloadsDir = Directory('${directory.path}/Downloads');
-      if (!await downloadsDir.exists()) {
-        await downloadsDir.create(recursive: true);
-      }
-
-      final path = '${downloadsDir.path}/$fileName';
-      final file = File(path);
-
       // Télécharger avec Dio
       final dio = Dio();
       await dio.download(
         url, 
-        path,
+        tempPath,
         onReceiveProgress: (received, total) {
           if (total != -1) {
             print('${(received / total * 100).toStringAsFixed(0)}%');
@@ -85,27 +70,156 @@ class _DetailCoursPageState extends State<DetailCoursEtudiant> {
       );
 
       // Fermer le dialogue de progression
-      Navigator.pop(context);
+      Navigator.of(context, rootNavigator: true).pop();
 
-      // Afficher un message de succès
+      // Méthode 2: Utiliser flutter_file_dialog pour sauvegarder le fichier
+      final params = SaveFileDialogParams(
+        sourceFilePath: tempPath,
+        fileName: fileName,
+        mimeTypesFilter: ["application/pdf", "video/mp4"],
+      );
+      
+      final filePath = await FlutterFileDialog.saveFile(params: params);
+      
+      if (filePath != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Fichier téléchargé avec succès"),
+            action: SnackBarAction(
+              label: 'Ouvrir',
+              onPressed: () async {
+                final uri = Uri.file(filePath);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Téléchargement annulé")),
+        );
+      }
+      
+      // Nettoyer le fichier temporaire
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
+    } catch (e) {
+      // Fermer le dialogue de progression en cas d'erreur
+      if (!kIsWeb) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      
+      print("Erreur téléchargement : $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Échec du téléchargement: ${e.toString()}")),
+      );
+    }
+  }
+
+  // Méthode spécifique pour le téléchargement sur le web
+  void _downloadForWeb(String url, String fileName) {
+    try {
+      // Vérifier si l'URL est valide
+      if (url.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("URL de téléchargement invalide")),
+        );
+        return;
+      }
+
+      // Afficher un indicateur de progression
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Préparation du téléchargement...")),
+      );
+
+      // Méthode 1: Utiliser window.open pour ouvrir dans un nouvel onglet
+      html.window.open(url, '_blank');
+      
+      // Méthode alternative si la première échoue
+      Future.delayed(Duration(seconds: 1), () {
+        // Vérifier si le téléchargement a fonctionné
+        final confirmDialog = showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Téléchargement"),
+            content: Text("Le fichier s'est-il ouvert dans un nouvel onglet?"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _tryAlternativeDownload(url, fileName);
+                },
+                child: Text("Non, essayer une autre méthode"),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text("Oui"),
+              ),
+            ],
+          ),
+        );
+      });
+    } catch (e) {
+      print("Erreur téléchargement web : $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Échec du téléchargement: ${e.toString()}")),
+      );
+      _tryAlternativeDownload(url, fileName);
+    }
+  }
+
+  // Méthode alternative pour le téléchargement sur le web
+  void _tryAlternativeDownload(String url, String fileName) {
+    try {
+      // Créer un élément iframe invisible
+      final iframe = html.IFrameElement()
+        ..style.visibility = 'hidden'
+        ..style.position = 'absolute'
+        ..style.width = '0'
+        ..style.height = '0'
+        ..src = url;
+      
+      html.document.body?.append(iframe);
+      
+      // Afficher un message d'information
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Fichier téléchargé : $fileName"),
+          content: Text("Si le téléchargement ne démarre pas automatiquement, cliquez sur le bouton ci-dessous"),
+          duration: Duration(seconds: 10),
           action: SnackBarAction(
-            label: 'Ouvrir',
-            onPressed: () {
-              OpenFile.open(path);
+            label: 'Ouvrir le fichier',
+            onPressed: () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
             },
           ),
         ),
       );
     } catch (e) {
-      // Fermer le dialogue de progression en cas d'erreur
-      Navigator.of(context, rootNavigator: true).pop();
-      
-      print("Erreur téléchargement : $e");
+      print("Erreur méthode alternative : $e");
+      // Dernière option: rediriger directement
+      _redirectToFile(url);
+    }
+  }
+
+  // Dernière méthode: redirection directe
+  void _redirectToFile(String url) {
+    try {
+      html.window.location.href = url;
+    } catch (e) {
+      print("Erreur redirection : $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Échec du téléchargement: ${e.toString()}")),
+        SnackBar(
+          content: Text("Impossible de télécharger le fichier. Vérifiez l'URL ou les autorisations."),
+          duration: Duration(seconds: 5),
+        ),
       );
     }
   }
