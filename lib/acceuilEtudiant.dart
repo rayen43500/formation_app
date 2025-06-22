@@ -72,28 +72,59 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Color(0xFFF5F7FA),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // En-tête avec titre
+              Container(
+                margin: EdgeInsets.only(bottom: 16),
+                child: Text(
+                  "Découvrez nos cours",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF3F51B5),
+                  ),
+                ),
+              ),
               // Barre de recherche
-              Padding(
-                padding: const EdgeInsets.all(12.0),
+              Container(
+                margin: EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Rechercher un cours...',
-                    hintStyle: const TextStyle(
-                        fontFamily: 'Comic Sans MS', color: Colors.black54),
-                    prefixIcon: const Icon(Icons.search, color: Colors.black54),
+                    hintStyle: TextStyle(color: Colors.black54),
+                    prefixIcon: Icon(Icons.search, color: Color(0xFF3F51B5)),
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(15),
                       borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide(color: Color(0xFF3F51B5), width: 1),
                     ),
                   ),
                   onChanged: (value) {
@@ -103,49 +134,56 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
                   },
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(left: 12.0),
+              // Titre des catégories
+              Padding(
+                padding: EdgeInsets.only(left: 4.0, bottom: 8.0),
                 child: Text(
                   'Catégories:',
                   style: TextStyle(
-                    fontFamily: 'Comic Sans MS',
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: Color(0xFF333333),
                   ),
                 ),
               ),
-              const SizedBox(height: 5),
-              SizedBox(
+              // Liste des catégories
+              Container(
                 height: 50,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.only(left: 8.0),
+                  padding: const EdgeInsets.only(left: 4.0),
                   children: [
                     Padding(
                       padding: const EdgeInsets.only(right: 8.0),
-                      child: TextButton(
+                      child: ElevatedButton(
                         onPressed: () {
                           setState(() {
                             selectedCategory = 'Tous';
                           });
                         },
-                        style: TextButton.styleFrom(
-                          backgroundColor:
-                          selectedCategory == 'Tous' ? Colors.grey : Colors.white38,
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedCategory == 'Tous' 
+                              ? Color(0xFF3F51B5) 
+                              : Colors.white,
+                          foregroundColor: selectedCategory == 'Tous'
+                              ? Colors.white
+                              : Colors.black87,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(25),
+                            side: BorderSide(
+                              color: selectedCategory == 'Tous'
+                                  ? Colors.transparent
+                                  : Colors.grey.shade300,
+                            ),
                           ),
+                          elevation: selectedCategory == 'Tous' ? 2 : 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Tous',
                           style: TextStyle(
-                            fontFamily: 'Comic Sans MS',
-                            color: Colors.black,
                             fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -166,29 +204,35 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
                             final categoryName = data['nom'];
                             return Padding(
                               padding: const EdgeInsets.only(right: 8.0),
-                              child: TextButton(
+                              child: ElevatedButton(
                                 onPressed: () {
                                   setState(() {
                                     selectedCategory = categoryName;
                                   });
                                 },
-                                style: TextButton.styleFrom(
+                                style: ElevatedButton.styleFrom(
                                   backgroundColor: selectedCategory == categoryName
-                                      ? Colors.grey
-                                      : Colors.white38,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 2),
+                                      ? Color(0xFF3F51B5)
+                                      : Colors.white,
+                                  foregroundColor: selectedCategory == categoryName
+                                      ? Colors.white
+                                      : Colors.black87,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(25),
+                                    side: BorderSide(
+                                      color: selectedCategory == categoryName
+                                          ? Colors.transparent
+                                          : Colors.grey.shade300,
+                                    ),
                                   ),
+                                  elevation: selectedCategory == categoryName ? 2 : 0,
                                 ),
                                 child: Text(
                                   categoryName,
-                                  style: const TextStyle(
-                                    fontFamily: 'Comic Sans MS',
-                                    color: Colors.black,
+                                  style: TextStyle(
                                     fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
@@ -200,7 +244,8 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 16),
+              // Liste des cours
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: selectedCategory == 'Tous'
@@ -215,8 +260,23 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
-                      return const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3F51B5)),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Chargement des cours...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFF3F51B5),
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     }
 
@@ -231,9 +291,34 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
 
 
                     if (filteredCourses.isEmpty) {
-                      return const Center(
-                        child: Text('Aucun cours trouvé.',
-                            style: TextStyle(color: Colors.white)),
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 64,
+                              color: Colors.grey.shade400,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Aucun cours trouvé',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Essayez de modifier vos critères de recherche',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     }
 
@@ -256,30 +341,40 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
                           },
                           child: Card(
                             color: Colors.white,
-                            margin: const EdgeInsets.only(bottom: 10),
+                            margin: const EdgeInsets.only(bottom: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
+                            elevation: 2,
+                            shadowColor: Colors.black.withOpacity(0.1),
                             child: Padding(
-                              padding: const EdgeInsets.all(12.0),
+                              padding: const EdgeInsets.all(16.0),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     title,
-                                    style: const TextStyle(
-                                      fontFamily: 'Comic Sans MS',
-                                      fontSize: 16,
+                                    style: TextStyle(
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
+                                      color: Color(0xFF333333),
                                     ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 6),
+                                  SizedBox(height: 10),
                                   Row(
                                     children: [
+                                      Icon(
+                                        Icons.person,
+                                        size: 16,
+                                        color: Color(0xFF3F51B5),
+                                      ),
+                                      SizedBox(width: 4),
                                       InkWell(
                                         onTap: () async {
                                           final instructorSnapshot = await FirebaseFirestore.instance
-                                              .collection('formateurs') // ou 'users' selon ta collection
+                                              .collection('formateurs')
                                               .doc(instructorId)
                                               .get();
 
@@ -296,20 +391,24 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
                                               ),
                                             );
                                           } else {
-                                            // Gérer le cas où le formateur n'existe pas
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text("Formateur non trouvé")),
+                                              SnackBar(
+                                                content: Text("Formateur non trouvé"),
+                                                backgroundColor: Colors.red,
+                                                behavior: SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                              ),
                                             );
                                           }
                                         },
                                         child: Text(
                                           instructor,
-                                          style: const TextStyle(
-                                            fontFamily: 'Comic Sans MS',
+                                          style: TextStyle(
                                             fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.blue,
-                                            decoration: TextDecoration.none,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF3F51B5),
                                           ),
                                         ),
                                       ),
@@ -319,24 +418,42 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
                                           return Icon(
                                             i < rating ? Icons.star : Icons.star_border,
                                             color: i < rating ? Color(0xFFFBC02D) : Colors.grey,
-                                            size: 20,
+                                            size: 18,
                                           );
                                         }),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    "Nombre de participants : ${data['participants'] ?? 0}",
-                                    style: const TextStyle(
-                                      fontFamily: 'Comic Sans MS',
-                                      fontSize: 14,
-                                      color: Colors.black54,
-                                    ),
+                                  SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.people,
+                                        size: 16,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        "${data['participants'] ?? 0} participants",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      Spacer(),
+                                      Text(
+                                        "${price.toStringAsFixed(2)} DT",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF3F51B5),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 10),
-                                  Align(
-                                    alignment: Alignment.center,
+                                  SizedBox(height: 16),
+                                  Container(
+                                    width: double.infinity,
                                     child: ElevatedButton(
                                       onPressed: () {
                                         Navigator.push(
@@ -344,25 +461,26 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
                                           MaterialPageRoute(
                                             builder: (_) => PaiementPage(
                                               courseData: data,
-                                              originalCourseId: courseDoc.id, // <-- Correction ici
+                                              originalCourseId: courseDoc.id,
                                             ),
                                           ),
                                         );
                                       },
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
+                                        backgroundColor: Color(0xFF4CAF50),
+                                        foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(25),
                                         ),
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 10),
+                                            vertical: 12),
+                                        elevation: 0,
                                       ),
                                       child: Text(
-                                        'Acheter le cours (${price.toStringAsFixed(2)} DT)',
-                                        style: const TextStyle(
-                                          fontFamily: 'Comic Sans MS',
+                                        'Acheter',
+                                        style: TextStyle(
                                           fontSize: 14,
-                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
@@ -381,28 +499,43 @@ class _AccueilEtudiantPageState extends State<AccueilEtudiantPage> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.black54,
-        backgroundColor: Colors.white,
-        selectedLabelStyle: const TextStyle(fontFamily: 'Comic Sans MS'),
-        unselectedLabelStyle: const TextStyle(fontFamily: 'Comic Sans MS'),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Accueil',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'Mes Cours',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            label: 'Profil',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              spreadRadius: 0,
+              blurRadius: 10,
+              offset: Offset(0, -3),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          selectedItemColor: Color(0xFF3F51B5),
+          unselectedItemColor: Colors.grey,
+          backgroundColor: Colors.white,
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Accueil',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.book),
+              label: 'Mes Cours',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_circle),
+              label: 'Profil',
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'registration_page.dart';
 import 'login_page.dart';
 import 'loginFormateur.dart';
+import 'theme.dart';
 
 Future<void> main() async {
   // Set this to true to make zone errors fatal
@@ -60,9 +61,7 @@ class SkillBridgeApp extends StatelessWidget {
     return MaterialApp(
       title: 'Skill Bridge',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
+      theme: AppTheme.themeData.copyWith(
         // Optimisations pour les appels vidéo
         pageTransitionsTheme: PageTransitionsTheme(
           builders: {

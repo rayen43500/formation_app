@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'acceuilFormateur.dart';
 import 'login_page.dart'; // Assuming this is LoginScreen
 import 'acceuilAdmin.dart';
+import 'theme.dart';
 
 class LoginFormateur extends StatefulWidget {
   @override
@@ -16,39 +17,80 @@ class _LoginFormateurState extends State<LoginFormateur> {
   int _selectedIndex = 1; // 0 for Étudiant, 1 for Enseignant (default to Enseignant)
   bool _isPasswordVisible = false;
   bool _isCodeCoursVisible = false;
+  bool _isLoading = false;
 
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _codeCoursController = TextEditingController();
 
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.secondaryColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
   Future<void> _sendResetPasswordEmail() async {
+    if (_usernameController.text.isEmpty) {
+      _showErrorSnackBar("Veuillez entrer votre nom d'utilisateur");
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
     try {
       var username = _usernameController.text.trim();
       var snapshot = await FirebaseFirestore.instance
-          .collection('users')
+          .collection('formateurs')
           .where('username', isEqualTo: username)
           .limit(1)
           .get();
 
       if (snapshot.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Nom d'utilisateur non trouvé.")),
-        );
+        _showErrorSnackBar("Nom d'utilisateur non trouvé.");
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
       String email = snapshot.docs.first['email'];
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Email de réinitialisation envoyé.")),
-      );
+      _showSuccessSnackBar("Email de réinitialisation envoyé à $email");
+      setState(() {
+        _isLoading = false;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur lors de la réinitialisation.")),
-      );
+      _showErrorSnackBar("Erreur lors de la réinitialisation.");
+      setState(() {
+        _isLoading = false;
+      });
     }
-  }// This method is now responsible for handling navigation bar taps
+  }
+
+  // This method is now responsible for handling navigation bar taps
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -65,171 +107,288 @@ class _LoginFormateurState extends State<LoginFormateur> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF9DAFCB),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      backgroundColor: AppTheme.backgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Skill',
-                      style: GoogleFonts.greatVibes(
-                        fontSize: 48,
-                        color: Color(0xFFB29245),
-                        fontWeight: FontWeight.bold,
+                // Logo et titre
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Skill',
+                            style: GoogleFonts.greatVibes(
+                              fontSize: 48,
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            ' Bridge',
+                            style: GoogleFonts.greatVibes(
+                              fontSize: 48,
+                              color: AppTheme.secondaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      ' Bridge',
-                      style: GoogleFonts.greatVibes(
-                        fontSize: 48,
-                        color: Color(0xFFB29245),
-                        fontWeight: FontWeight.bold,
+                      Text(
+                        'E-Learning Platform',
+                        style: GoogleFonts.roboto(
+                          fontSize: 18,
+                          color: Colors.grey[700],
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                Text(
-                  'E-Learning',
-                  style: GoogleFonts.roboto(
-                    fontSize: 18,
-                    color: Color(0xFF8D8B45),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Removed the old tab buttons here, replaced by BottomNavigationBar
-                const SizedBox(height: 20),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Bienvenue, connectez-vous :',
-                    style: TextStyle(color: Colors.black, fontSize: 16),
+                
+                SizedBox(height: 30),
+                
+                // Formulaire de connexion
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 15,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Connexion Enseignant',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'Bienvenue, veuillez vous connecter pour continuer',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      
+                      _buildTextField('Nom d\'utilisateur', controller: _usernameController),
+                      SizedBox(height: 16),
+                      _buildTextField('Mot de passe', controller: _passwordController, isPassword: true),
+                      SizedBox(height: 16),
+                      _buildCodeCoursField(),
+                      
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _isLoading ? null : _sendResetPasswordEmail,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.primaryColor,
+                          ),
+                          child: Text(
+                            'Mot de passe oublié ?',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(height: 10),
+                      _buildLoginButton(),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                _buildTextField('Nom d\'utilisateur', controller: _usernameController),
-                const SizedBox(height: 10),
-                _buildTextField('Mot de passe', controller: _passwordController, isPassword: true),
-                const SizedBox(height: 10),
-                _buildCodeCoursField(),
-                const SizedBox(height: 5),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _sendResetPasswordEmail,
-                    child: Text('Mot de passe oublié ?', style: TextStyle(decoration: TextDecoration.underline, color: Colors.black54)),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _buildLoginButton(),
               ],
             ),
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.school),
-            label: 'Étudiant',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Enseignant',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blueGrey, // Added for better visual distinction
-        onTap: _onItemTapped,
-        backgroundColor: Colors.white70,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              spreadRadius: 0,
+              blurRadius: 10,
+              offset: Offset(0, -3),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.school),
+              label: 'Étudiant',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Enseignant',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: AppTheme.primaryColor,
+          unselectedItemColor: Colors.grey,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          onTap: _onItemTapped,
+        ),
       ),
     );
   }
 
   Widget _buildCodeCoursField() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _codeCoursController,
-            obscureText: !_isCodeCoursVisible,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              hintText: 'Code Cours (5 caractères)',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _codeCoursController,
+        obscureText: !_isCodeCoursVisible,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          hintText: 'Code Cours (5 caractères)',
+          hintStyle: TextStyle(color: Colors.grey[500]),
+          prefixIcon: Icon(Icons.vpn_key_outlined, color: AppTheme.primaryColor),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _isCodeCoursVisible ? Icons.visibility : Icons.visibility_off,
+              color: AppTheme.primaryColor,
             ),
-            maxLength: 5,
+            onPressed: () => setState(() => _isCodeCoursVisible = !_isCodeCoursVisible),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide(color: AppTheme.primaryColor, width: 1),
           ),
         ),
-        IconButton(
-          icon: Icon(
-            _isCodeCoursVisible ? Icons.visibility : Icons.visibility_off,
-            color: Colors.black54,
-          ),
-          onPressed: () {
-            setState(() {
-              _isCodeCoursVisible = !_isCodeCoursVisible;
-            });
-          },
-        ),
-      ],
+        maxLength: 5,
+        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+      ),
     );
   }
 
   Widget _buildTextField(String hintText, {bool isPassword = false, required TextEditingController controller}) {
-    return TextField(
-      controller: controller,
-      obscureText: isPassword && !_isPasswordVisible,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        hintText: hintText,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
-        ),
-        suffixIcon: isPassword
-            ? IconButton(
-          icon: Icon(
-            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-            color: Colors.black54,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
           ),
-          onPressed: () {
-            setState(() {
-              _isPasswordVisible = !_isPasswordVisible;
-            });
-          },
-        )
-            : null,
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword && !_isPasswordVisible,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey[500]),
+          prefixIcon: Icon(
+            isPassword ? Icons.lock_outline : Icons.person_outline, 
+            color: AppTheme.primaryColor
+          ),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    color: AppTheme.primaryColor,
+                  ),
+                  onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                )
+              : null,
+          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide(color: AppTheme.primaryColor, width: 1),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildLoginButton() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
-          padding: EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+      height: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
-        ),
-        onPressed: _login,
-        child: Text(
-          'Se connecter',
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
+        ],
+      ),
+      child: ElevatedButton(
+        style: AppTheme.primaryButtonStyle,
+        onPressed: _isLoading ? null : _login,
+        child: _isLoading 
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                'Se connecter',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }
@@ -240,19 +399,23 @@ class _LoginFormateurState extends State<LoginFormateur> {
     final codeCours = _codeCoursController.text.trim();
 
     if (username.isEmpty || password.isEmpty || codeCours.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Veuillez remplir tous les champs.')),
-      );
+      _showErrorSnackBar('Veuillez remplir tous les champs.');
       return;
     }
-    if (username == 'admin' && password == 'skillbridge' && codeCours == '12345') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => AccueilAdmin()),
-      );
-      return;
-    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
     try {
+      if (username == 'admin' && password == 'skillbridge' && codeCours == '12345') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => AccueilAdmin()),
+        );
+        return;
+      }
+      
       // Rechercher le formateur par username
       final snapshot = await FirebaseFirestore.instance
           .collection('formateurs')
@@ -261,9 +424,10 @@ class _LoginFormateurState extends State<LoginFormateur> {
           .get();
 
       if (snapshot.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Nom d'utilisateur introuvable.")),
-        );
+        _showErrorSnackBar("Nom d'utilisateur introuvable.");
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -272,9 +436,10 @@ class _LoginFormateurState extends State<LoginFormateur> {
       final codeStocke = data['code_cours'];
 
       if (codeCours != codeStocke) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Code cours incorrect.")),
-        );
+        _showErrorSnackBar("Code cours incorrect.");
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -284,15 +449,18 @@ class _LoginFormateurState extends State<LoginFormateur> {
         password: password,
       );
 
+      _showSuccessSnackBar("Connexion réussie!");
+      
       // Connexion réussie
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => AccueilFormateur()),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur : ${e.toString()}")),
-      );
+      _showErrorSnackBar("Erreur : ${e.toString()}");
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 }

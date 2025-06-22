@@ -9,6 +9,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'registration_page.dart';
 import 'loginFormateur.dart';
 import 'acceuilEtudiant.dart';
+import 'theme.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -20,16 +21,24 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
   TextEditingController passwordController = TextEditingController();
   TextEditingController usernameController = TextEditingController();
+  bool _isLoading = false;
 
   bool _validatePassword(String password) => password.length >= 8;
 
   Future<void> _loginWithUsernameAndPassword() async {
-    if (!_validatePassword(passwordController.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Le mot de passe doit contenir au moins 8 caractères.')),
-      );
+    if (usernameController.text.isEmpty) {
+      _showErrorSnackBar("Veuillez entrer un nom d'utilisateur");
       return;
     }
+    
+    if (!_validatePassword(passwordController.text)) {
+      _showErrorSnackBar('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
 
     String username = usernameController.text.trim();
     String password = passwordController.text;
@@ -42,9 +51,10 @@ class _LoginScreenState extends State<LoginScreen> {
           .get();
 
       if (snapshot.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Nom d'utilisateur introuvable.")),
-        );
+        _showErrorSnackBar("Nom d'utilisateur introuvable.");
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -60,16 +70,55 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (context) => AccueilEtudiantPage()),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Connexion échouée. Vérifiez vos identifiants.")),
-      );
+      _showErrorSnackBar("Connexion échouée. Vérifiez vos identifiants.");
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.secondaryColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
   Future<void> _loginWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      final GoogleSignInAuthentication googleAuth = await googleUser!.authentication;
+      
+      if (googleUser == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -77,19 +126,26 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       await FirebaseAuth.instance.signInWithCredential(credential);
+      
+      _showSuccessSnackBar("Connexion Google réussie");
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => AccueilEtudiantPage()),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur de connexion Google.")),
-      );
+      _showErrorSnackBar("Erreur de connexion Google.");
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _loginWithFacebook() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
     try {
       final result = await FacebookAuth.instance.login();
 
@@ -104,18 +160,29 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => AccueilEtudiantPage()),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Connexion Facebook échouée.")),
-        );
+        _showErrorSnackBar("Connexion Facebook échouée.");
+        setState(() {
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur Facebook.")),
-      );
+      _showErrorSnackBar("Erreur Facebook.");
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _sendResetPasswordEmail() async {
+    if (usernameController.text.isEmpty) {
+      _showErrorSnackBar("Veuillez entrer votre nom d'utilisateur pour réinitialiser le mot de passe");
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
     try {
       var username = usernameController.text.trim();
       var snapshot = await FirebaseFirestore.instance
@@ -125,79 +192,279 @@ class _LoginScreenState extends State<LoginScreen> {
           .get();
 
       if (snapshot.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Nom d'utilisateur non trouvé.")),
-        );
+        _showErrorSnackBar("Nom d'utilisateur non trouvé.");
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
       String email = snapshot.docs.first['email'];
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Email de réinitialisation envoyé.")),
-      );
+      _showSuccessSnackBar("Email de réinitialisation envoyé à $email");
+      setState(() {
+        _isLoading = false;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur lors de la réinitialisation.")),
-      );
+      _showErrorSnackBar("Erreur lors de la réinitialisation.");
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  Widget _buildTextField(String hintText, {TextEditingController? controller}) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        hintText: hintText,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+  Widget _buildTextField(String hintText, {TextEditingController? controller, IconData? prefixIcon}) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey[500]),
+          prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppTheme.primaryColor) : null,
+          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide(color: AppTheme.primaryColor, width: 1),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildPasswordField(String hintText) {
-    return TextField(
-      controller: passwordController,
-      obscureText: !_isPasswordVisible,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        hintText: hintText,
-        suffixIcon: IconButton(
-          icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-          onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: passwordController,
+        obscureText: !_isPasswordVisible,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey[500]),
+          prefixIcon: Icon(Icons.lock_outline, color: AppTheme.primaryColor),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+              color: AppTheme.primaryColor,
+            ),
+            onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            borderSide: BorderSide(color: AppTheme.primaryColor, width: 1),
+          ),
         ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
       ),
     );
   }
 
-  Widget _buildButton(String text, Color color, Color textColor, [VoidCallback? onPressed, double? width]) {
-    return SizedBox(
-      width: width ?? double.infinity,
+  Widget _buildPrimaryButton(String text, VoidCallback onPressed) {
+    return Container(
+      width: double.infinity,
+      height: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          padding: EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+          ),
+          elevation: 0,
         ),
-        onPressed: onPressed ?? () {},
-        child: Text(text, style: TextStyle(color: textColor, fontSize: 16)),
+        onPressed: _isLoading ? null : onPressed,
+        child: _isLoading 
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                text,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }
 
-  Widget _buildSocialButton(IconData icon, String text, Color color, VoidCallback onPressed) {
-    return OutlinedButton.icon(
-      style: OutlinedButton.styleFrom(
-        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        backgroundColor: Colors.grey[300],
+  Widget _buildSecondaryButton(String text, VoidCallback onPressed) {
+    return Container(
+      width: 200,
+      height: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.secondaryColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-      onPressed: onPressed,
-      icon: Icon(icon, color: color),
-      label: Text(text, style: TextStyle(color: Colors.black)),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.secondaryColor,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+          ),
+          elevation: 0,
+        ),
+        onPressed: _isLoading ? null : onPressed,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton(IconData icon, String text, Color color, Color backgroundColor, VoidCallback onPressed) {
+    return Container(
+      width: 280,
+      height: 50,
+      margin: EdgeInsets.symmetric(vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+          ),
+          elevation: 0,
+        ),
+        onPressed: _isLoading ? null : onPressed,
+        icon: Icon(icon, color: color, size: 20),
+        label: Text(
+          text,
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleButton(VoidCallback onPressed) {
+    return Container(
+      width: 280,
+      height: 50,
+      margin: EdgeInsets.symmetric(vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+            side: BorderSide(color: Colors.grey.shade300),
+          ),
+          elevation: 0,
+        ),
+        onPressed: _isLoading ? null : onPressed,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/google-pay-mark.png',
+              height: 24,
+              width: 50,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Se connecter avec Google',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -213,75 +480,193 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF9DAFCB),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Skill', style: GoogleFonts.greatVibes(fontSize: 48, color: Color(0xFFB29245), fontWeight: FontWeight.bold)),
-                  Text(' Bridge', style: GoogleFonts.greatVibes(fontSize: 48, color: Color(0xFFB29245), fontWeight: FontWeight.bold)),
-                ],
-              ),
-              Text('E-Learning', style: GoogleFonts.roboto(fontSize: 18, color: Color(0xFF8D8B45))),
-              SizedBox(height: 20),
-              Align(alignment: Alignment.centerLeft, child: Text('Bienvenue, connectez-vous :', style: TextStyle(color: Colors.black))),
-              SizedBox(height: 10),
-              _buildTextField('Nom d\'utilisateur', controller: usernameController),
-              SizedBox(height: 10),
-              _buildPasswordField('Mot de passe'),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _sendResetPasswordEmail,
-                  child: Text('Mot de passe oublié ?', style: TextStyle(decoration: TextDecoration.underline, color: Colors.black54)),
+      backgroundColor: AppTheme.backgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo et titre
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Skill',
+                            style: GoogleFonts.greatVibes(
+                              fontSize: 48,
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            ' Bridge',
+                            style: GoogleFonts.greatVibes(
+                              fontSize: 48,
+                              color: AppTheme.secondaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'E-Learning Platform',
+                        style: GoogleFonts.roboto(
+                          fontSize: 18,
+                          color: Colors.grey[700],
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              _buildButton('Se connecter', Colors.blue, Colors.white, _loginWithUsernameAndPassword, 300.0),
-              SizedBox(height: 10),
-              Text('Ou', style: TextStyle(fontSize: 16)),
-              SizedBox(height: 5),
-              _buildButton('S\'inscrire', Colors.green, Colors.white, () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => RegistrationPage()));
-              }, 200), // Reduced width for 'S'inscrire' button
-              SizedBox(height: 10),
-              IntrinsicWidth( // Align social buttons vertically
-                child: Column(
+                
+                SizedBox(height: 30),
+                
+                // Formulaire de connexion
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 15,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Connexion',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'Bienvenue, veuillez vous connecter pour continuer',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      
+                      _buildTextField('Nom d\'utilisateur', 
+                        controller: usernameController,
+                        prefixIcon: Icons.person_outline,
+                      ),
+                      SizedBox(height: 16),
+                      _buildPasswordField('Mot de passe'),
+                      
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _isLoading ? null : _sendResetPasswordEmail,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.primaryColor,
+                          ),
+                          child: Text(
+                            'Mot de passe oublié ?',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(height: 10),
+                      _buildPrimaryButton('Se connecter', _loginWithUsernameAndPassword),
+                    ],
+                  ),
+                ),
+                
+                SizedBox(height: 20),
+                
+                // Séparateur
+                Row(
                   children: [
-                    ConstrainedBox(
-                      constraints: BoxConstraints(minWidth: 250), // Set a minimum width for consistent sizing
-                      child: _buildSocialButton(FontAwesomeIcons.facebook, 'Continuer avec Facebook', Colors.blue, _loginWithFacebook),
+                    Expanded(child: Divider(color: Colors.grey[400])),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 15),
+                      child: Text(
+                        'OU',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
-                    SizedBox(height: 10),
-                    ConstrainedBox(
-                      constraints: BoxConstraints(minWidth: 250), // Apply the same minimum width
-                      child: _buildSocialButton(FontAwesomeIcons.google, 'Continuer avec Google', Colors.red, _loginWithGoogle),
-                    ),
+                    Expanded(child: Divider(color: Colors.grey[400])),
                   ],
                 ),
-              ),
-            ],
+                
+                SizedBox(height: 20),
+                
+                // Boutons sociaux et inscription
+                _buildSecondaryButton('S\'inscrire', () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => RegistrationPage()));
+                }),
+                
+                SizedBox(height: 20),
+                
+                _buildGoogleButton(_loginWithGoogle),
+                
+                _buildSocialButton(
+                  FontAwesomeIcons.facebook,
+                  'Continuer avec Facebook',
+                  Colors.blue,
+                  Colors.white,
+                  _loginWithFacebook,
+                ),
+                
+                SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.school),
-            label: 'Étudiant',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Enseignant',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blueGrey,
-        onTap: _onItemTapped,
-        backgroundColor: Colors.white70,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              spreadRadius: 0,
+              blurRadius: 10,
+              offset: Offset(0, -3),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.school),
+              label: 'Étudiant',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Enseignant',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: AppTheme.primaryColor,
+          unselectedItemColor: Colors.grey,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          onTap: _onItemTapped,
+        ),
       ),
     );
   }
