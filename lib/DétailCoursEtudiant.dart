@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:open_file/open_file.dart';
 
 class DetailCoursEtudiant extends StatefulWidget {
   final String courseId;
@@ -24,24 +25,87 @@ class _DetailCoursPageState extends State<DetailCoursEtudiant> {
 
   Future<void> _downloadFile(String url, String fileName) async {
     try {
-      final status = await Permission.storage.request();
-      if (!status.isGranted) {
-        throw Exception("Permission refusée");
+      // Demander les permissions
+      if (Platform.isAndroid) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          throw Exception("Permission de stockage refusée");
+        }
       }
 
-      final dir = await getExternalStorageDirectory();
-      final path = '${dir!.path}/$fileName';
+      // Afficher un indicateur de progression
+      final progressDialog = showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text("Téléchargement en cours..."),
+              ],
+            ),
+          );
+        },
+      );
 
+      // Obtenir le répertoire de téléchargement
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = await getExternalStorageDirectory();
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+      
+      if (directory == null) {
+        throw Exception("Impossible d'accéder au répertoire de stockage");
+      }
+
+      // Créer un dossier "Downloads" s'il n'existe pas
+      final downloadsDir = Directory('${directory.path}/Downloads');
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
+
+      final path = '${downloadsDir.path}/$fileName';
+      final file = File(path);
+
+      // Télécharger avec Dio
       final dio = Dio();
-      await dio.download(url, path);
+      await dio.download(
+        url, 
+        path,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            print('${(received / total * 100).toStringAsFixed(0)}%');
+          }
+        }
+      );
 
+      // Fermer le dialogue de progression
+      Navigator.pop(context);
+
+      // Afficher un message de succès
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Fichier téléchargé : $fileName")),
+        SnackBar(
+          content: Text("Fichier téléchargé : $fileName"),
+          action: SnackBarAction(
+            label: 'Ouvrir',
+            onPressed: () {
+              OpenFile.open(path);
+            },
+          ),
+        ),
       );
     } catch (e) {
+      // Fermer le dialogue de progression en cas d'erreur
+      Navigator.of(context, rootNavigator: true).pop();
+      
       print("Erreur téléchargement : $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Échec du téléchargement")),
+        SnackBar(content: Text("Échec du téléchargement: ${e.toString()}")),
       );
     }
   }
