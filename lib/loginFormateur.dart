@@ -172,23 +172,36 @@ class _LoginFormateurState extends State<LoginFormateur> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Connexion Enseignant',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.school,
+                            color: AppTheme.primaryColor,
+                            size: 28,
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'Connexion Enseignant',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 5),
-                      Text(
-                        'Bienvenue, veuillez vous connecter pour continuer',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                      Padding(
+                        padding: const EdgeInsets.only(left: 38.0),
+                        child: Text(
+                          'Accédez à votre espace enseignant',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
                         ),
                       ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 25),
                       
                       _buildTextField('Nom d\'utilisateur', controller: _usernameController),
                       SizedBox(height: 16),
@@ -212,8 +225,38 @@ class _LoginFormateurState extends State<LoginFormateur> {
                         ),
                       ),
                       
-                      SizedBox(height: 10),
+                      SizedBox(height: 15),
                       _buildLoginButton(),
+                      
+                      SizedBox(height: 20),
+                      
+                      // Information sur le code cours
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: AppTheme.primaryColor,
+                              size: 20,
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Le code cours est fourni par l\'administrateur lors de votre inscription.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -257,50 +300,90 @@ class _LoginFormateurState extends State<LoginFormateur> {
   }
 
   Widget _buildCodeCoursField() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _codeCoursController,
-        obscureText: !_isCodeCoursVisible,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.white,
-          hintText: 'Code Cours (5 caractères)',
-          hintStyle: TextStyle(color: Colors.grey[500]),
-          prefixIcon: Icon(Icons.vpn_key_outlined, color: AppTheme.primaryColor),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _isCodeCoursVisible ? Icons.visibility : Icons.visibility_off,
-              color: AppTheme.primaryColor,
-            ),
-            onPressed: () => setState(() => _isCodeCoursVisible = !_isCodeCoursVisible),
-          ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
-            borderSide: BorderSide(color: AppTheme.primaryColor, width: 1),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 5.0, bottom: 8.0),
+          child: Row(
+            children: [
+              Icon(
+                Icons.vpn_key_outlined,
+                color: AppTheme.primaryColor,
+                size: 16,
+              ),
+              SizedBox(width: 5),
+              Text(
+                "Code Cours",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              Text(
+                " *",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ],
           ),
         ),
-        maxLength: 5,
-        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-      ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: _codeCoursController,
+            obscureText: !_isCodeCoursVisible,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              hintText: 'Entrez le code à 5 caractères',
+              hintStyle: TextStyle(color: Colors.grey[500]),
+              prefixIcon: Icon(Icons.vpn_key_outlined, color: AppTheme.primaryColor),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isCodeCoursVisible ? Icons.visibility : Icons.visibility_off,
+                  color: AppTheme.primaryColor,
+                ),
+                onPressed: () => setState(() => _isCodeCoursVisible = !_isCodeCoursVisible),
+              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                borderSide: BorderSide(color: AppTheme.primaryColor.withOpacity(0.3), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              ),
+            ),
+            maxLength: 5,
+            buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
     );
   }
 
@@ -458,6 +541,36 @@ class _LoginFormateurState extends State<LoginFormateur> {
       );
     } catch (e) {
       _showErrorSnackBar("Erreur : ${e.toString()}");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Afficher un message d'information
+      _showSuccessSnackBar("Connexion Google en cours...");
+      
+      // Simuler le processus de connexion Google pour les enseignants
+      await Future.delayed(Duration(seconds: 2));
+      
+      // Ici, vous pourriez implémenter la vérification que l'utilisateur Google
+      // est bien un enseignant enregistré dans votre base de données
+      
+      _showSuccessSnackBar("Connexion réussie!");
+      
+      // Redirection vers la page d'accueil formateur
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => AccueilFormateur()),
+      );
+    } catch (e) {
+      _showErrorSnackBar("Erreur lors de la connexion Google");
       setState(() {
         _isLoading = false;
       });
