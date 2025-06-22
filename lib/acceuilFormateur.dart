@@ -8,26 +8,67 @@ import 'ajoutQuiz.dart';
 import 'statiCoursAdmin.dart';
 import 'VideoCallPage.dart';
 import 'video_call_service.dart';
+import 'theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AccueilFormateur extends StatefulWidget {
   @override
   _AccueilFormateurState createState() => _AccueilFormateurState();
 }
 
-class _AccueilFormateurState extends State<AccueilFormateur> {
+class _AccueilFormateurState extends State<AccueilFormateur> with SingleTickerProviderStateMixin {
   String selectedPage = 'Accueil';
   String selectedCategory = 'Tous';
+  TabController? _tabController;
+  bool _isLoading = false;
 
-  final Color backgroundColor = Color(0xFF9FB0CC);
   final CollectionReference _categoriesCollection =
-  FirebaseFirestore.instance.collection('categories');
+      FirebaseFirestore.instance.collection('categories');
   final CollectionReference _coursCollection =
-  FirebaseFirestore.instance.collection('courses');
+      FirebaseFirestore.instance.collection('courses');
   final String formateurId = FirebaseAuth.instance.currentUser?.uid ?? '';
   String searchText = '';
   
   // Service d'appel vidéo
   final VideoCallService _videoCallService = VideoCallService();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.secondaryColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
 
   // Afficher le dialogue de confirmation pour démarrer un appel
   Future<void> _showStartCallDialog(BuildContext context, DocumentSnapshot cours) async {
@@ -35,20 +76,57 @@ class _AccueilFormateurState extends State<AccueilFormateur> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Démarrer un appel vidéo'),
+          title: Text(
+            'Démarrer un appel vidéo',
+            style: TextStyle(
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Vous allez démarrer un appel vidéo pour le cours:'),
               SizedBox(height: 8),
-              Text(
-                cours['title'],
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  cours['title'],
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
               ),
               SizedBox(height: 16),
-              Text('Les étudiants inscrits à ce cours pourront rejoindre la session.'),
+              Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: AppTheme.secondaryColor,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Les étudiants inscrits à ce cours pourront rejoindre la session.',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
           ),
           actions: [
             TextButton(
@@ -85,7 +163,7 @@ class _AccueilFormateurState extends State<AccueilFormateur> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: AppTheme.secondaryColor,
                 foregroundColor: Colors.white,
               ),
               child: Text('Démarrer l\'appel'),
@@ -99,165 +177,240 @@ class _AccueilFormateurState extends State<AccueilFormateur> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
-      resizeToAvoidBottomInset: true,
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: selectedPage == 'Accueil' 
+        ? AppBar(
+            backgroundColor: AppTheme.primaryColor,
+            elevation: 0,
+            title: Text(
+              'Tableau de bord Enseignant',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            centerTitle: true,
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: Colors.white,
+              indicatorWeight: 3,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white.withOpacity(0.7),
+              tabs: [
+                Tab(text: 'Mes cours'),
+                Tab(text: 'Statistiques'),
+              ],
+            ),
+          )
+        : null,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (selectedPage != 'Profil') ...[
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      searchText = value.toLowerCase(); // Mise à jour du texte de recherche
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher un cours...',
-                    hintStyle: TextStyle(fontFamily: 'Comic Sans MS'),
-                    prefixIcon: Icon(Icons.search),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 20),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
+        child: selectedPage == 'Accueil'
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // En-tête avec recherche
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
                     ),
                   ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 12.0),
-                child: Text(
-                  'Catégories:',
-                  style: TextStyle(
-                    fontFamily: 'Comic Sans MS',
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              SizedBox(height: 5),
-              Container(
-                height: 50,
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _categoriesCollection.snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return Center(child: Text('Chargement...'));
-                    }
-
-                    List<DocumentSnapshot> docs = snapshot.data!.docs;
-
-                    return ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
-                          child: TextButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedCategory = 'Tous';
-                              });
-                            },
-                            style: TextButton.styleFrom(
-                              backgroundColor: selectedCategory == 'Tous'
-                                  ? Colors.grey
-                                  : Colors.white38,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Barre de recherche
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: Offset(0, 3),
                             ),
-                            child: Text(
-                              'Tous',
-                              style: TextStyle(
-                                fontFamily: 'Comic Sans MS',
-                                color: Colors.black,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          ],
+                        ),
+                        child: TextField(
+                          onChanged: (value) {
+                            setState(() {
+                              searchText = value.toLowerCase();
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Rechercher un cours...',
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            prefixIcon: Icon(Icons.search, color: AppTheme.primaryColor),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 20),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+                              borderSide: BorderSide.none,
                             ),
                           ),
                         ),
-                        ...docs.map((doc) {
-                          String categoryName = doc['nom'];
-                          return Padding(
-                            padding:
-                            const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  selectedCategory = categoryName;
-                                });
-                              },
-                              style: TextButton.styleFrom(
-                                backgroundColor:
-                                selectedCategory == categoryName
-                                    ? Colors.grey
-                                    : Colors.white38,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                      ),
+                      
+                      SizedBox(height: 16),
+                      
+                      // Catégories
+                      Text(
+                        'Filtrer par catégorie:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      
+                      Container(
+                        height: 40,
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: _categoriesCollection.snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return Center(
+                                child: SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                categoryName,
-                                style: TextStyle(
-                                  fontFamily: 'Comic Sans MS',
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                              );
+                            }
+
+                            List<DocumentSnapshot> docs = snapshot.data!.docs;
+
+                            return ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: FilterChip(
+                                    selected: selectedCategory == 'Tous',
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        selectedCategory = 'Tous';
+                                      });
+                                    },
+                                    backgroundColor: Colors.white.withOpacity(0.2),
+                                    selectedColor: Colors.white,
+                                    checkmarkColor: AppTheme.primaryColor,
+                                    labelStyle: TextStyle(
+                                      color: selectedCategory == 'Tous'
+                                          ? AppTheme.primaryColor
+                                          : Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    label: Text('Tous'),
+                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ],
-                    );
-                  },
+                                ...docs.map((doc) {
+                                  String categoryName = doc['nom'];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: FilterChip(
+                                      selected: selectedCategory == categoryName,
+                                      onSelected: (selected) {
+                                        setState(() {
+                                          selectedCategory = categoryName;
+                                        });
+                                      },
+                                      backgroundColor: Colors.white.withOpacity(0.2),
+                                      selectedColor: Colors.white,
+                                      checkmarkColor: AppTheme.primaryColor,
+                                      labelStyle: TextStyle(
+                                        color: selectedCategory == categoryName
+                                            ? AppTheme.primaryColor
+                                            : Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      label: Text(categoryName),
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-            Expanded(
-              child
-                  : selectedPage == 'Accueil'
-                  ? _buildCoursValidesAccueil()
-                  : ProfileformPage(),
+                
+                // Contenu principal
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildCoursValidesAccueil(),
+                      Center(child: Text('Statistiques à venir')),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : ProfileformPage(),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              spreadRadius: 0,
+              blurRadius: 10,
+              offset: Offset(0, -3),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: selectedPage == 'Accueil' ? 0 : 1,
+          onTap: (index) {
+            setState(() {
+              selectedPage = index == 0 ? 'Accueil' : 'Profil';
+            });
+          },
+          selectedItemColor: AppTheme.primaryColor,
+          unselectedItemColor: Colors.grey[600],
+          backgroundColor: Colors.white,
+          elevation: 0,
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard),
+              label: 'Tableau de bord',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profil',
             ),
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: selectedPage == 'Accueil' ? 0 : 1,
-        onTap: (index) {
-          setState(() {
-            selectedPage = index == 0 ? 'Accueil' : 'Profil';
-          });
-        },
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.grey[600],
-        backgroundColor: Colors.white,
-        selectedLabelStyle: TextStyle(fontFamily: 'Comic Sans MS'),
-        unselectedLabelStyle: TextStyle(fontFamily: 'Comic Sans MS'),
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-        ],
-      ),
-      floatingActionButton: selectedPage != 'Profil'
-          ? FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => AjoutCoursPage()),
-          );
-        },
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.black,
-        child: Icon(Icons.add),
-      )
+      floatingActionButton: selectedPage == 'Accueil'
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AjoutCoursPage()),
+                );
+              },
+              backgroundColor: AppTheme.secondaryColor,
+              foregroundColor: Colors.white,
+              icon: Icon(Icons.add),
+              label: Text('Nouveau cours'),
+            )
           : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -268,15 +421,47 @@ class _AccueilFormateurState extends State<AccueilFormateur> {
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData)
-          return Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            ),
+          );
 
         final coursDocs = snapshot.data!.docs;
 
         if (coursDocs.isEmpty) {
-          return Center(child: Text('Aucun cours trouvé.'));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.school_outlined,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Aucun cours trouvé',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Commencez par créer un nouveau cours',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          );
         }
 
         return ListView.builder(
+          padding: EdgeInsets.all(16),
           itemCount: coursDocs.length,
           itemBuilder: (context, index) {
             var cours = coursDocs[index];
@@ -290,26 +475,67 @@ class _AccueilFormateurState extends State<AccueilFormateur> {
   Widget _buildCoursValidesAccueil() {
     return StreamBuilder<QuerySnapshot>(
       stream: _coursCollection
-          .where('status', isEqualTo: 'Validé')
           .where('instructorId', isEqualTo: formateurId)
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData)
-          return Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            ),
+          );
 
         List<QueryDocumentSnapshot> coursDocs = snapshot.data!.docs;
 
+        // Filtrer par catégorie si nécessaire
         if (selectedCategory != 'Tous') {
           coursDocs = coursDocs
               .where((doc) => doc['category'] == selectedCategory)
               .toList();
         }
+        
+        // Filtrer par recherche si nécessaire
+        if (searchText.isNotEmpty) {
+          coursDocs = coursDocs
+              .where((doc) => 
+                  doc['title'].toString().toLowerCase().contains(searchText) ||
+                  doc['description'].toString().toLowerCase().contains(searchText))
+              .toList();
+        }
 
         if (coursDocs.isEmpty) {
-          return Center(child: Text('Aucun cours validé trouvé.'));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.search_off,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Aucun cours trouvé',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Essayez de modifier vos critères de recherche',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          );
         }
 
         return ListView.builder(
+          padding: EdgeInsets.all(16),
           itemCount: coursDocs.length,
           itemBuilder: (context, index) {
             return buildCourseCard(coursDocs[index]);
@@ -320,167 +546,292 @@ class _AccueilFormateurState extends State<AccueilFormateur> {
   }
 
   Widget buildCourseCard(DocumentSnapshot cours) {
-    return Column(
-      children: [
-        Card(
-          margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
+    String status = cours['status'] ?? 'En attente';
+    Color statusColor;
+    IconData statusIcon;
+    
+    switch (status) {
+      case 'Validé':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        break;
+      case 'Refusé':
+        statusColor = Colors.red;
+        statusIcon = Icons.cancel;
+        break;
+      default:
+        statusColor = Colors.orange;
+        statusIcon = Icons.pending;
+    }
+    
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+        boxShadow: [AppTheme.cardShadow],
+      ),
+      child: Column(
+        children: [
+          // En-tête de la carte
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(AppTheme.borderRadiusMedium),
+                topRight: Radius.circular(AppTheme.borderRadiusMedium),
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Text(
-                        cours['title'],
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Comic Sans MS',
-                        ),
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.school,
+                        color: AppTheme.primaryColor,
+                        size: 24,
                       ),
                     ),
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Color(0xFFD6D6D6), // Couleur plus claire
-                      child: IconButton(
-                        icon: Icon(Icons.video_call, color: Colors.blueGrey, size: 30), // Icône plus grande
-                        onPressed: () {
-                          // Afficher le dialogue de confirmation pour démarrer l'appel
-                          _showStartCallDialog(context, cours);
-                        },
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            cours['title'],
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimaryColor,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                statusIcon,
+                                color: statusColor,
+                                size: 14,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                status,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: statusColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Icon(
+                                Icons.category,
+                                color: AppTheme.textSecondaryColor,
+                                size: 14,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                cours['category'] ?? 'Non catégorisé',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.video_call,
+                        color: AppTheme.secondaryColor,
+                        size: 30,
+                      ),
+                      onPressed: () {
+                        _showStartCallDialog(context, cours);
+                      },
                     ),
                   ],
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: 12),
                 Text(
                   cours['description'],
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'Comic Sans MS'),
-                ),
-                SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              StatiCoursAdminPage(courseId: cours.id),
-                        ),
-                      );
-                    },
-                    icon: Icon(Icons.bar_chart),
-                    label: Text('Voir statistique'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondaryColor,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                        ModificationCoursPage(cours: cours),
-
-                    ),
-                    );
-                  },
-                  icon: Icon(Icons.edit),
-                  label: Text('Modifier'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[300],
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
+          
+          // Divider
+          Divider(height: 1, thickness: 1, color: Colors.grey[200]),
+          
+          // Actions
+          Padding(
+            padding: EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    icon: Icons.edit,
+                    label: 'Modifier',
+                    color: AppTheme.primaryColor,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ModificationCoursPage(cours: cours),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    bool confirm = await showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text("Confirmation"),
-                        content: Text("Supprimer ce cours ?"),
-                        actions: [
-                          TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: Text("Annuler")),
-                          TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: Text("Supprimer")),
-                        ],
-                      ),
-                    );
-
-                    if (confirm) {
-                      await _coursCollection.doc(cours.id).delete();
-                    }
-                  },
-                  icon: Icon(Icons.delete),
-                  label: Text('Supprimer'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[300],
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                    icon: Icons.quiz,
+                    label: 'Ajouter quiz',
+                    color: Colors.purple,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AjoutQuizPage(coursId: cours.id),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AjoutQuizPage(coursId: cours.id),
-                      ),
-                    );
-                  },
-                  icon: Icon(Icons.quiz),
-                  label: Text('Ajouter quiz'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[300],
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                    icon: Icons.bar_chart,
+                    label: 'Statistiques',
+                    color: Colors.blue,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => StatiCoursAdminPage(courseId: cours.id),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          
+          // Bouton de suppression
+          Padding(
+            padding: EdgeInsets.only(left: 12, right: 12, bottom: 12),
+            child: InkWell(
+              onTap: () async {
+                bool confirm = await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text("Confirmation"),
+                    content: Text("Êtes-vous sûr de vouloir supprimer ce cours ?"),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text("Annuler"),
+                      ),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text("Supprimer"),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm) {
+                  setState(() {
+                    _isLoading = true;
+                  });
+                  
+                  try {
+                    await _coursCollection.doc(cours.id).delete();
+                    _showSuccessSnackBar("Cours supprimé avec succès");
+                  } catch (e) {
+                    _showErrorSnackBar("Erreur lors de la suppression");
+                  } finally {
+                    setState(() {
+                      _isLoading = false;
+                    });
+                  }
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.red.withOpacity(0.5)),
+                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Supprimer le cours',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(
+        label,
+        style: TextStyle(fontSize: 12),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.1),
+        foregroundColor: color,
+        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
         ),
-        SizedBox(height: 10),
-      ],
+        elevation: 0,
+      ),
     );
   }
 }
